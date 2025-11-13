@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database import UserDatabase
 
 app = FastAPI(title="StuMedica Server")
+db = UserDatabase()
+# db.create_user("Jan Nowak", "email@example.pl", "haslo123", 151, "patient")
 
 app.add_middleware(
     CORSMiddleware,
