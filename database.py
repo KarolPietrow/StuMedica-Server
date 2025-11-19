@@ -1,5 +1,4 @@
 import sqlite3
-
 import auth
 
 
@@ -56,3 +55,13 @@ class UserDatabase:
             print(f"Error creating user: {str(e)}")
             return False, f"Error creating user {str(e)}"
 
+    def get_user_by_email(self, email: str):
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            row = cursor.fetchone()
+            if row:
+                keys = ["id", "name", "email", "password_hash", "age", "account_type", "created_at", "last_login",
+                        "is_active"]
+                return dict(zip(keys, row))
+            return None

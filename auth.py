@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(
-            schemes=["argon2", "bcrypt"],
+            schemes=["argon2"],
             default="argon2",
             argon2__time_cost=3,
             argon2__memory_cost=65536,
