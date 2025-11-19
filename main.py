@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+
 from database import UserDatabase
 from pydantic import BaseModel
 
@@ -8,6 +10,7 @@ import auth
 app = FastAPI(title="StuMedica Server")
 db = UserDatabase()
 # db.create_user("Andrzej Nowak", "email3@example.pl", "haslo123", 151, "patient")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,15 +19,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/value")
-async def value():
-    return {"success": True, "message": "Hello World"}
+@app.get("/", response_class=HTMLResponse)
+async def main_site_html():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>StuMedica API</title>
+    </head>
+    <body>
+    
+    <h1>Witamy w StuMedica API! 💖</h1>
+    
+    </body>
+    </html>
+    """
+
+@app.get("/hello")
+async def get_test_value():
+    return {"success": True, "message": "Welcome to the StuMedica API!"}
 
 class LoginData(BaseModel):
     email: str
     password: str
 
-@app.post("/api/login")
+@app.post("/login")
 async def login(data: LoginData):
     user = db.get_user_by_email(data.email)
     if not user:
