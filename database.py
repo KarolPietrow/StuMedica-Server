@@ -34,20 +34,18 @@ class UserDatabase:
             """)
 
             conn.commit()
-    def create_user(self, name: str, email: str, password: str, age: int, account_type: str):
-        password_hash = auth.get_password_hash(password)
+
+    def create_user(self, name: str, email: str, password_hash: str, account_type: str):
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 print("Trying to create user")
                 cursor.execute("""
-                    INSERT INTO users (name, email, password_hash, age, account_type)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (name, email, password_hash, age, account_type))
-                print("Trying to commit")
+                    INSERT INTO users (name, email, password_hash, account_type)
+                    VALUES (?, ?, ?, ?)
+                """, (name, email, password_hash, account_type))
                 conn.commit()
-                print("User created successfully")
-                return True, f"User {name} created successfully with ID {cursor.lastrowid}"
+                return True, cursor.lastrowid
         except sqlite3.IntegrityError:
             print("User already exists")
             return False, "Email already exists"
@@ -57,11 +55,10 @@ class UserDatabase:
 
     def get_user_by_email(self, email: str):
         with sqlite3.connect(self.db_file) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
             row = cursor.fetchone()
             if row:
-                keys = ["id", "name", "email", "password_hash", "age", "account_type", "created_at", "last_login",
-                        "is_active"]
-                return dict(zip(keys, row))
+                return dict(row)
             return None
