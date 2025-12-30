@@ -1,4 +1,5 @@
 import sqlite3
+import logging
 import auth
 
 
@@ -47,10 +48,10 @@ class UserDatabase:
                 conn.commit()
                 return True, cursor.lastrowid
         except sqlite3.IntegrityError:
-            print("User already exists")
+            logging.error("User already exists")
             return False, "Email already exists"
         except Exception as e:
-            print(f"Error creating user: {str(e)}")
+            logging.error(f"Error creating user: {str(e)}")
             return False, f"Error creating user {str(e)}"
 
     def get_user_by_email(self, email: str):
