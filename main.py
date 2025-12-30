@@ -80,14 +80,17 @@ def logout(response: Response):
 
 @app.post("/register")
 def register(data: UserCreate):
+    clean_name = " ".join(data.name.split())
+    clean_email = data.email.strip().replace(" ", "")
+
     password_hash = auth.get_password_hash(data.password)
 
     if db.get_user_by_email(data.email):
         raise HTTPException(status_code=400, detail="Email zajęty")
 
     success, result = db.create_user(
-        name=data.name,
-        email=data.email,
+        name=clean_name,
+        email=clean_email,
         password_hash=password_hash,
         account_type=data.account_type
     )
