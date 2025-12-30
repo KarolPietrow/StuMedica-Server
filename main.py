@@ -1,14 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Header, Request, Response
+from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from database import UserDatabase
 
 import auth
+from dependencies import get_current_user
 from schemas import UserLogin, UserCreate
-
-from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer
-from typing import Optional
 
 app = FastAPI(title="StuMedica Server")
 db = UserDatabase()
@@ -18,55 +15,18 @@ origins = [
     "http://localhost:8081",
     "http://localhost:8082",
 
+    # "http://stumedica.pl",
     "https://stumedica.pl",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    # allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
-
-async def get_token(
-    request: Request,
-    token_header: Optional[str] = Depends(oauth2_scheme)
-):
-    if token_header:
-        return token_header
-
-    token_cookie = request.cookies.get("access_token")
-    if token_cookie:
-        return token_cookie
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Brak autoryzacji"
-    )
-
-async def get_current_user(token: str = Depends(get_token)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Nie można zweryfikować poświadczeń",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = db.get_user_by_email(email)
-    if user is None:
-        raise credentials_exception
-
-    return user
-
 
 @app.get("/", response_class=HTMLResponse)
 async def main_site_html():
@@ -101,7 +61,7 @@ def login(data: UserLogin, response: Response):
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # True na produkcji (wymaga HTTPS), False na localhost
+        secure=True,  # True na produkcji (wymaga HTTPS), False na localhost
         samesite="lax",  # Zabezpieczenie CSRF
         max_age=24 * 3600
     )
@@ -140,7 +100,7 @@ def register(data: UserCreate):
 async def get_me(current_user: dict = Depends(get_current_user)):
     return {
         "success": True,
-        "user": current_user["name"],
+        "name": current_user["name"],
         "email": current_user["email"]
     }
 
