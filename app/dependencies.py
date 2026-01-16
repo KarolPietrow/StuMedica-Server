@@ -2,12 +2,13 @@ from fastapi import Request, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from typing import Optional
 from jose import JWTError, jwt
-import auth
-from database import UserDatabase
+from sqlalchemy.orm import Session
 
-db = UserDatabase()
+from app.database import get_db
+from app import models
+from app import security
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 async def get_token(
     request: Request,
@@ -25,21 +26,24 @@ async def get_token(
         detail="Brak autoryzacji"
     )
 
-async def get_current_user(token: str = Depends(get_token)):
+async def get_current_user(
+        token: str = Depends(get_token),
+        db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Nie można zweryfikować poświadczeń",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.get_user_by_email(email)
+    user = db.query(models.User).filter(models.User.email == email).first()
+
     if user is None:
         raise credentials_exception
 
