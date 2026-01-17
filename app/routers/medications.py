@@ -36,6 +36,26 @@ def create_medication(
     db.refresh(new_med)
     return new_med
 
+@router.put("/{med_id}", response_model=schemas.MedicationResponse)
+def update_medication(
+        med_id: int,
+        medication_update: schemas.MedicationCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    med_query = db.query(models.Medication).filter(
+        models.Medication.id == med_id,
+        models.Medication.user_id == current_user.id
+    )
+
+    db_med = med_query.first()
+    if not db_med:
+        raise HTTPException(status_code=404, detail="Lek nie znaleziony")
+
+    med_query.update(medication_update.model_dump(), synchronize_session=False)
+    db.commit()
+    db.refresh(db_med)
+    return db_med
 
 @router.delete("/{med_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_medication(
