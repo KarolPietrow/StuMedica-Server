@@ -8,9 +8,12 @@ router = APIRouter(tags=["General"])
 async def main_site_html():
     return """
     <!DOCTYPE html>
-    <html>
+    <html lang="pl">
     <head><title>StuMedica API</title></head>
-    <body><h1>Witamy w StuMedica API! 💖</h1></body>
+    <body>
+        <h1>Witamy w StuMedica API! 💖</h1>
+        <h2><a href="https://api.stumedica.pl/docs">Dokumentacja</a></h2>
+    </body>
     </html>
     """
 
