@@ -1,12 +1,18 @@
 from app.database import SessionLocal, engine
 from app import models
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import random
 
-# Upewnij się, że tabele istnieją
 models.Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
+
+# USTAWIENIA DATY
+YEAR = 2026
+START_MONTH = 1
+START_DAY = 20
+END_MONTH = 2
+END_DAY = 20
 
 # 1. Dodaj lekarzy
 doctors_data = [
@@ -19,28 +25,52 @@ doctors_data = [
 
 created_doctors = []
 for d in doctors_data:
-    # Sprawdź czy już nie istnieje (żeby nie dublować przy wielokrotnym uruchomieniu)
     exists = db.query(models.Doctor).filter_by(name=d["name"]).first()
     if not exists:
         new_doc = models.Doctor(name=d["name"], specialization=d["spec"], price_private=d["price"])
         db.add(new_doc)
         created_doctors.append(new_doc)
+        print(f"Dodano lekarza: {d['name']}")
     else:
         created_doctors.append(exists)
+        print(f"Lekarz istnieje: {d['name']}")
 
 db.commit()
 
-# 2. Generuj wolne terminy na najbliższe 7 dni
-for doc in created_doctors:
-    for day in range(1, 8):  # Przez następny tydzień
-        for hour in [9, 10, 11, 13, 14, 15]:  # Przykładowe godziny
-            # Losowo pomijamy niektóre godziny, żeby wyglądało naturalnie
-            if random.random() > 0.7: continue
+start_date = datetime(YEAR, START_MONTH, START_DAY)
+end_date = datetime(YEAR, END_MONTH, END_DAY)
 
-            visit_time = datetime.now().replace(hour=hour, minute=0, second=0, microsecond=0) + timedelta(days=day)
+# Oblicz liczbę dni w zakresie
+delta_days = (end_date - start_date).days
 
-            # Sprawdź duplikat
-            exists = db.query(models.Appointment).filter_by(doctor_id=doc.id, date_time=visit_time).first()
+print(f"\n--- Generowanie terminów od {start_date.date()} do {end_date.date()} ---")
+count = 0
+
+for i in range(delta_days + 1):
+    current_date = start_date + timedelta(days=i)
+
+    # SPRAWDZENIE WEEKENDU
+    # weekday(): 0=Pon, 1=Wt, ..., 5=Sob, 6=Niedz
+    if current_date.weekday() >= 5:
+        continue  # Pomiń soboty i niedziele
+
+    # Dla każdego lekarza
+    for doc in created_doctors:
+        # Godziny przyjęć (np. od 9:00 do 16:00)
+        possible_hours = [9, 10, 11, 12, 13, 14, 15, 16]
+
+        for hour in possible_hours:
+            if random.random() > 0.5:
+                continue
+
+            visit_time = current_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+
+            # Sprawdź, czy taki termin już istnieje w bazie (żeby nie dublować)
+            exists = db.query(models.Appointment).filter_by(
+                doctor_id=doc.id,
+                date_time=visit_time
+            ).first()
+
             if not exists:
                 slot = models.Appointment(
                     doctor_id=doc.id,
@@ -49,7 +79,8 @@ for doc in created_doctors:
                     type="PRIVATE"
                 )
                 db.add(slot)
+                count += 1
 
 db.commit()
-print("Baza danych zasilona lekarzami i terminami!")
+print(f"\nSukces! Wygenerowano {count} nowych wolnych terminów.")
 db.close()
