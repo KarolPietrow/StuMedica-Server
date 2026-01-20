@@ -65,7 +65,7 @@ def ask_assistant(
         client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
         chat = client.chats.create(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             config=types.GenerateContentConfig(
                 tools=[get_my_medications, add_medication],
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False),

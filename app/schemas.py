@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import List, Optional
+from datetime import datetime
 import re
 
 class UserBase(BaseModel):
@@ -36,6 +37,38 @@ class MedicationResponse(MedicationBase):
     id: int
     user_id: int
     is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class DoctorBase(BaseModel):
+    name: str
+    specialization: str
+    price_private: float
+
+
+class DoctorResponse(DoctorBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class AppointmentBase(BaseModel):
+    date_time: datetime
+
+
+class AppointmentCreate(BaseModel):
+    notes: Optional[str] = None
+
+
+class AppointmentResponse(AppointmentBase):
+    id: int
+    doctor: DoctorResponse
+    is_booked: bool
+    type: str
+    notes: Optional[str] = None
 
     class Config:
         from_attributes = True
