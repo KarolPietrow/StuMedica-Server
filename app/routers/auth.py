@@ -26,7 +26,7 @@ def login(data: UserLogin, response: Response, db: Session = Depends(get_db)):
         httponly=True,
         secure=True,  # True na produkcji (wymaga HTTPS), False na localhost
         samesite="lax",  # Zabezpieczenie CSRF
-        max_age=24 * 3600
+        max_age=7 * 24 * 3600
     )
 
     return {
