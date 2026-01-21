@@ -1,4 +1,7 @@
 import os
+from datetime import datetime
+from typing import List
+
 from google import genai
 from google.genai import types
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,8 +19,12 @@ router = APIRouter(
     tags=["AI Assistant"]
 )
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
-    message: str
+    history: List[ChatMessage]
 
 @router.post("/ask")
 def ask_assistant(
@@ -25,9 +32,6 @@ def ask_assistant(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # --- 1. DEFINICJE NARZĘDZI (Wewnątrz funkcji, by mieć dostęp do `db` i `user`) ---
-
-    # Funkcja do pobierania leków
     def get_my_medications():
         """Pobiera listę leków aktualnie przyjmowanych przez pacjenta."""
         meds = db.query(models.Medication).filter(
@@ -40,15 +44,13 @@ def ask_assistant(
 
         return ", ".join([f"{m.name} ({m.dosage})" for m in meds])
 
-    # Funkcja do dodawania leku
     def add_medication(nazwa_leku: str, dawka: str):
         """Dodaje nowy lek do listy pacjenta.
 
         Args:
-            nazwa_leku: Nazwa leku np. Ibuprofen, Witamina C.
-            dawka: Opis dawkowania np. 200mg rano, 1 tabletka dziennie.
+            nazwa_leku: Nazwa leku np. Ibuprofen.
+            dawka: Opis dawkowania np. 200mg rano.
         """
-        # Tu można dodać walidację (Guardrails), np. czy dawka nie jest zbyt duża
         new_med = models.Medication(
             name=nazwa_leku,
             dosage=dawka,
@@ -59,27 +61,118 @@ def ask_assistant(
         db.commit()
         return f"Pomyślnie dodano lek: {nazwa_leku}, dawka: {dawka}."
 
-    # --- 2. KONFIGURACJA MODELU Z NARZĘDZIAMI ---
+    def find_available_slots(specjalizacja: str = None):
+        """Wyszukuje wolne terminy wizyt.
+        Args:
+            specjalizacja: (Opcjonalnie) Specjalizacja lekarza np. 'Kardiolog', 'Internista'.
+                           Jeśli puste, zwraca wszystkie wolne terminy.
+        """
+        query = db.query(models.Appointment).join(models.Doctor).filter(
+            models.Appointment.is_booked == False,
+            models.Appointment.date_time > datetime.now()
+        )
+
+        if specjalizacja:
+            query = query.filter(models.Doctor.specialization.ilike(f"%{specjalizacja}%"))
+
+        slots = query.order_by(models.Appointment.date_time).limit(10).all()
+
+        if not slots:
+            return "Nie znaleziono wolnych terminów dla podanych kryteriów."
+
+        result = "Dostępne terminy:\n"
+        for slot in slots:
+            dt_str = slot.date_time.strftime("%Y-%m-%d %H:%M")
+            result += f"- ID: {slot.id} | Lekarz: {slot.doctor.name} ({slot.doctor.specialization}) | Data: {dt_str} | Cena: {slot.doctor.price_private} PLN\n"
+
+        return result
+
+    def book_appointment_by_id(wizyta_id: int, powod: str = "Konsultacja"):
+        """Rezerwuje wizytę na podstawie jej numeru ID (który znalazłeś wcześniej).
+        Args:
+            wizyta_id: Numer ID wolnego terminu (liczba).
+            powod: Krótki powód wizyty podany przez pacjenta.
+        """
+        appointment = db.query(models.Appointment).filter(
+            models.Appointment.id == wizyta_id,
+            models.Appointment.is_booked == False
+        ).first()
+
+        if not appointment:
+            return "Błąd: Ten termin jest niedostępny lub podano błędne ID."
+
+        appointment.is_booked = True
+        appointment.patient_id = current_user.id
+        appointment.notes = powod
+
+        db.commit()
+
+        doctor_name = appointment.doctor.name
+        date_str = appointment.date_time.strftime("%Y-%m-%d %H:%M")
+        return f"Sukces! Zarezerwowano wizytę u {doctor_name} na dzień {date_str}."
+
+    def get_my_appointments_history():
+        """Pobiera historię i nadchodzące wizyty pacjenta."""
+        apps = db.query(models.Appointment).join(models.Doctor).filter(
+            models.Appointment.patient_id == current_user.id
+        ).order_by(models.Appointment.date_time.desc()).all()
+
+        if not apps:
+            return "Nie masz żadnych zarezerwowanych wizyt."
+
+        result = "Twoje wizyty:\n"
+        for app in apps:
+            dt_str = app.date_time.strftime("%Y-%m-%d %H:%M")
+            status = "Zarezerwowana" if app.date_time > datetime.now() else "Archiwalna"
+            result += f"- {dt_str} | {app.doctor.name} ({app.doctor.specialization}) | Status: {status}\n"
+
+        return result
 
     try:
         client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
+        if not request.history:
+            return {"response": "Pusta wiadomość"}
+
+        last_message = request.history[-1].content
+
+        previous_messages = []
+        for msg in request.history[:-1]:
+            previous_messages.append(
+                types.Content(
+                    role=msg.role,
+                    parts=[types.Part.from_text(text=msg.content)]
+                )
+            )
+
         chat = client.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
+            history=previous_messages,
             config=types.GenerateContentConfig(
-                tools=[get_my_medications, add_medication],
+                tools=[
+                    get_my_medications,
+                    add_medication,
+                    find_available_slots,
+                    book_appointment_by_id,
+                    get_my_appointments_history
+                ],
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False),
-                system_instruction="Jesteś pomocnym asystentem medycznym w aplikacji StuMedica. "
-                                   "Masz dostęp do leków pacjenta i możesz zarządzać jego listą. "
-                                   "Odpowiadaj krótko i rzeczowo. Nie udawaj lekarza."
+                system_instruction=(
+                    "Jesteś inteligentnym asystentem medycznym w aplikacji StuMedica. Nazywasz się StuMedicAI."
+                    "Twoje zadania:\n"
+                    "1. Zarządzanie lekami pacjenta (wyświetlanie, dodawanie).\n"
+                    "2. Umawianie wizyt lekarskich.\n"
+                    "ZASADY UMAWIANIA WIZYT:\n"
+                    "- Najpierw ZAWSZE szukaj dostępnych terminów używając `find_available_slots`.\n"
+                    "- Po znalezieniu listy, zapytaj użytkownika, który termin wybiera.\n"
+                    "- Gdy użytkownik wybierze termin, użyj `book_appointment_by_id` przekazując odpowiednie ID znalezione w poprzednim kroku.\n"
+                    "- Nie zmyślaj terminów, korzystaj tylko z tego, co zwróci funkcja.\n"
+                )
             )
         )
 
-        # --- 3. ROZMOWA ---
+        response = chat.send_message(last_message)
 
-        response = chat.send_message(request.message)
-
-        # W nowym SDK odpowiedź tekstowa jest w .text (jeśli nie zablokowano przez safety filters)
         if response.text:
             return {"response": response.text}
         else:
