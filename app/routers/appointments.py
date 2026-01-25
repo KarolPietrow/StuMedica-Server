@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -6,6 +6,7 @@ from datetime import datetime
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.services.email import send_appointment_confirmation
 
 router = APIRouter(
     prefix="/appointments",
@@ -47,6 +48,7 @@ def get_available_slots(
 def book_appointment(
         appointment_id: int,
         booking_data: schemas.AppointmentCreate,
+        background_tasks: BackgroundTasks,
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user)
 ):
@@ -64,6 +66,16 @@ def book_appointment(
 
     db.commit()
     db.refresh(appointment)
+
+    # background_tasks.add_task(
+    #     send_appointment_confirmation,
+    #     to_email=current_user.email,
+    #     patient_name=current_user.name,
+    #     doctor_name=appointment.doctor.name,
+    #     specialization=appointment.doctor.specialization,
+    #     date_time=appointment.date_time
+    # )
+
     return appointment
 
 @router.get("/my-history", response_model=List[schemas.AppointmentResponse])

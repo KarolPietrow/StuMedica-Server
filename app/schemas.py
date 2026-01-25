@@ -72,3 +72,7 @@ class AppointmentResponse(AppointmentBase):
 
     class Config:
         from_attributes = True
+
+
+class EmailRequest(BaseModel):
+    email: EmailStr
