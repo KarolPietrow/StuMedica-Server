@@ -1,11 +1,17 @@
 import os
 import faiss
 import numpy as np
+import logging
+from transformers import logging as hf_logging
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Optional
 
+
 KNOWLEDGE_DIR = "app/knowledge"
 MODEL_NAME = "all-MiniLM-L6-v2"
+
+hf_logging.set_verbosity_error()
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 class MiniRAG:
     def __init__(self):

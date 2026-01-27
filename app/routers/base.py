@@ -1,8 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
-from app.schemas import EmailRequest
-
 router = APIRouter(tags=["General"])
 
 @router.get("/", response_class=HTMLResponse)
