@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+SQLAlchemy
+pydantic
+python-dotenv
+passlib
+python-jose
+python-dotenv
+google-genai
+faiss-cpu
+numpy
+sentence-transformers
+requests

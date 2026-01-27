@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
 from app.schemas import EmailRequest
-from app.services.email import send_test_email
 
 router = APIRouter(tags=["General"])
 
@@ -29,11 +28,11 @@ async def main_site_html():
 async def get_test_value():
     return {"success": True, "message": "Welcome to the StuMedica API!"}
 
-@router.post("/send-test")
-async def send_test_email_endpoint(request: EmailRequest):
-    try:
-        await send_test_email(request.email)
-        return {"message": "E-mail testowy został wysłany"}
-    except Exception as e:
-        print(f"Błąd wysyłania maila: {e}")
-        raise HTTPException(status_code=500, detail="Nie udało się wysłać wiadomości")
+# @router.post("/send-test")
+# async def send_test_email_endpoint(request: EmailRequest):
+#     try:
+#         await send_test_email(request.email)
+#         return {"message": "E-mail testowy został wysłany"}
+#     except Exception as e:
+#         print(f"Błąd wysyłania maila: {e}")
+#         raise HTTPException(status_code=500, detail="Nie udało się wysłać wiadomości")

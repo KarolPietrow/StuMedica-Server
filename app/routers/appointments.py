@@ -6,7 +6,6 @@ from datetime import datetime
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.services.email import send_appointment_confirmation
 
 router = APIRouter(
     prefix="/appointments",
