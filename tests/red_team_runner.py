@@ -4,7 +4,7 @@ import time
 import sys
 import statistics
 
-BASE_URL = "https://api.stumedica.pl"
+BASE_URL = "http://localhost:4000"
 API_URL = f"{BASE_URL}/chat/ask"
 LOGIN_URL = f"{BASE_URL}/auth/login"
 REPORT_FILE = "RED_TEAM_REPORT.md"

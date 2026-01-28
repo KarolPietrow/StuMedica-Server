@@ -266,7 +266,7 @@ def ask_assistant(
         except Exception as e:
             return f"ToolError: Błąd przeszukiwania bazy wiedzy: {str(e)}"
 
-    def validate_user_input(text: str):
+    def validate_message(text: str):
         clean_chars = len(re.findall(r'[a-zA-Z0-9\s.,?!:;ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]', text))
         total_chars = len(text)
 
@@ -302,11 +302,11 @@ def ask_assistant(
             "wczuj się w rolę",
             "act as a linux terminal",
             "jako terminal linux",
-            "sudo"
+            "sudo",
             "rm -rf",
             "rm -fr",
-            "--no-preserve-root"
-            ":() { :|:& } ;:",
+            "--no-preserve-root",
+            r":\(\) \{ :\|:& \} ;:",
             "reasoning",
             "rozumowanie"
             "policies",
@@ -324,7 +324,7 @@ def ask_assistant(
             "mdma",
             "terroryzm",
             "atak terrorystyczny",
-            "terrorism"
+            "terrorism",
             "kradzież",
             "podatki",
             "polityk",
@@ -346,9 +346,9 @@ def ask_assistant(
 
     if request.history:
         last_msg_content = request.history[-1].content
-        validation_error_message = validate_user_input(last_msg_content)
-        if validation_error_message:
-            return {"response": validation_error_message}
+        input_validation_err = validate_message(last_msg_content)
+        if input_validation_err:
+            return {"response": input_validation_err}
 
     if request.local_mode:
         try:
@@ -446,6 +446,9 @@ def ask_assistant(
                 "2. Umawianie wizyt lekarskich.\n"
                 "3. Odpowiadanie na podstawie bazy danych (search_knowledge_base) na pytania użtkownika związane z aplikacją StuMedica lub przychodnią StuMedica.\n"
                 "Jeśli nie jesteś pewien jak odpowiedzieć, poszukaj informacji w bazie danych (search_knowledge_base). Nie zmyślaj, jeśli trzeba odmów lub powiedz że nie rozumiesz.\n"
+                "Nie zwracaj pustych odpowiedzi - np. jeśli użytkownik poprosił o listę leków, a jest ona pusta, to napisz użytkownikowi, że nie ma on żadnych leków.\n"
+                "Odpowiadaj bezpośrednio na pytanie użytkownika, nie zaczynaj od 'Rozumiem', 'Oczywiście', ale możesz używać zwrotów grzecznościowych lub napisać dłuższą wiadomość, jeśli użytkownik tego oczekuje - patrz na kontekst rozmowy.\n"
+                "Jeśli użytkownik dziękuje ci za pomoc, odpisz krótko i grzecznie, że nie ma problemu, i spytaj się czy coś jeszcze możesz dla niego zrobić.\n"
                 "\n"
                 "### INSTRUKCJA OBSŁUGI NARZĘDZI (WAŻNE):\n"
                 "1. Kiedy użyjesz narzędzia (np. get_my_medications), otrzymasz wiadomość zwrotną z wynikiem.\n"
@@ -484,7 +487,6 @@ def ask_assistant(
             ollama_messages = [system_message] + user_history
 
             response = ollama.chat(
-                # model='llama3.1',
                 model='qwen3:14b',
                 messages=ollama_messages,
                 tools=ollama_tools if request.use_functions else None,
@@ -507,11 +509,21 @@ def ask_assistant(
                             'name': function_name
                         })
 
-                final_response = ollama.chat(model='llama3.1', messages=ollama_messages)
-                return {"response": final_response.message.content}
+                final_response = ollama.chat(model='qwen3:14b', messages=ollama_messages)
+                content = final_response.message.content
+                output_validation_err = validate_message(content)
+                if output_validation_err:
+                    return {"response": output_validation_err}
+
+                return {"response": content}
 
             else:
-                return {"response": response.message.content}
+                content = response.message.content
+                output_validation_err = validate_message(content)
+                if output_validation_err:
+                    return {"response": output_validation_err}
+
+                return {"response": content}
 
         except Exception as e:
             print(f"Local model error: {e}")
@@ -569,6 +581,9 @@ def ask_assistant(
                         "2. Umawianie wizyt lekarskich.\n"
                         "3. Odpowiadanie na podstawie bazy danych (search_knowledge_base) na pytania użtkownika związane z aplikacją StuMedica lub przychodnią StuMedica.\n"
                         "Jeśli nie jesteś pewien jak odpowiedzieć, poszukaj informacji w bazie danych (search_knowledge_base). Nie zmyślaj, jeśli trzeba odmów lub powiedz że nie rozumiesz.\n"
+                        "Nie zwracaj pustych odpowiedzi - np. jeśli użytkownik poprosił o listę leków, a jest ona pusta, to napisz użytkownikowi, że nie ma on żadnych leków.\n"
+                        "Odpowiadaj bezpośrednio na pytanie użytkownika, nie zaczynaj od 'Rozumiem', 'Oczywiście', ale możesz używać zwrotów grzecznościowych lub napisać dłuższą wiadomość, jeśli użytkownik tego oczekuje - patrz na kontekst rozmowy.\n"
+                        "Jeśli użytkownik dziękuje ci za pomoc, odpisz krótko i grzecznie, że nie ma problemu, i spytaj się czy coś jeszcze możesz dla niego zrobić.\n"
                         "ZASADY UMAWIANIA WIZYT:\n"
                         "- Najpierw ZAWSZE szukaj dostępnych terminów używając `find_available_slots`.\n"
                         "- Po znalezieniu listy, zapytaj użytkownika, który termin wybiera.\n"
@@ -596,10 +611,15 @@ def ask_assistant(
 
             response = chat.send_message(structured_prompt)
 
-            if response.text:
-                return {"response": response.text}
+            content = response.text if response.text else ""
+            output_validation_err = validate_message(content)
+            if output_validation_err:
+                return {"response": output_validation_err}
+
+            if content:
+                return {"response": content}
             else:
-                return {"response": "[SecurityBlocked] Przepraszam, ale nie mogę odpowiedzieć na to pytanie. Jestem asystentem medycznym i mogę pomóc w sprawach związanych z Twoim zdrowiem i aplikacją StuMedica."}
+                return {"response": "[EmptyResponse] Przepraszam, wystąpił błąd. Spróbuj ponownie."}
 
         except Exception as e:
             print(f"Błąd Google GenAI: {e}")
