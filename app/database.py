@@ -1,11 +1,21 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./users.db"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if "sqlite" in DATABASE_URL:
+    connect_args = {"check_same_thread": False}
+else:
+    connect_args = {}
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    DATABASE_URL,
+    connect_args=connect_args
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -18,65 +28,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-# class UserDatabase:
-#     def __init__(self, db_file: str = "users.db"):
-#         self.db_file = db_file
-#         self.init_db()
-#
-#     def init_db(self):
-#         with sqlite3.connect(self.db_file) as conn:
-#             cursor = conn.cursor()
-#
-#             cursor.execute("""
-#             CREATE TABLE IF NOT EXISTS users (
-#                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-#                 name TEXT NOT NULL,
-#                 email TEXT UNIQUE NOT NULL,
-#                 password_hash TEXT NOT NULL,
-#                 age INTEGER,
-#                 account_type TEXT NOT NULL CHECK(account_type IN ('patient', 'doctor')),
-#                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-#                 last_login TIMESTAMP,
-#                 is_active BOOLEAN DEFAULT 1
-#             )
-#             """)
-#
-#             cursor.execute("""
-#                 CREATE INDEX IF NOT EXISTS idx_email ON users(email)
-#             """)
-#
-#             cursor.execute("""
-#                 CREATE INDEX IF NOT EXISTS idx_account_type ON users(account_type)
-#             """)
-#
-#             conn.commit()
-#
-#     def create_user(self, name: str, email: str, password_hash: str, account_type: str):
-#         try:
-#             with sqlite3.connect(self.db_file) as conn:
-#                 cursor = conn.cursor()
-#                 print("Trying to create user")
-#                 cursor.execute("""
-#                     INSERT INTO users (name, email, password_hash, account_type)
-#                     VALUES (?, ?, ?, ?)
-#                 """, (name, email, password_hash, account_type))
-#                 conn.commit()
-#                 return True, cursor.lastrowid
-#         except sqlite3.IntegrityError:
-#             logging.error("User already exists")
-#             return False, "Email already exists"
-#         except Exception as e:
-#             logging.error(f"Error creating user: {str(e)}")
-#             return False, f"Error creating user {str(e)}"
-#
-#     def get_user_by_email(self, email: str):
-#         with sqlite3.connect(self.db_file) as conn:
-#             conn.row_factory = sqlite3.Row
-#             cursor = conn.cursor()
-#             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
-#             row = cursor.fetchone()
-#             if row:
-#                 return dict(row)
-#             return None

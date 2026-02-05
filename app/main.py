@@ -7,7 +7,7 @@ from app.database import engine
 from app.routers import auth, base, medications, appointments, chat
 
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI(title="StuMedica API", version="0.5")
+app = FastAPI(title="StuMedica API", version="0.6")
 
 origins = [
     "http://localhost:8081",
