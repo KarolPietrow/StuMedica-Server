@@ -7,15 +7,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-if "sqlite" in DATABASE_URL:
-    connect_args = {"check_same_thread": False}
-else:
-    connect_args = {}
+if not DATABASE_URL:
+    raise ValueError("Brak zmiennej DATABASE_URL w .env")
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args=connect_args
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
+        "connect_timeout": 15,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5
+    }
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
