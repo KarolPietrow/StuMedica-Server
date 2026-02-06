@@ -13,8 +13,11 @@ origins = [
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:3000",
+    "http://stumedica.pl",
     "https://stumedica.pl",
+    "http://www.stumedica.pl",
     "https://www.stumedica.pl",
+
 ]
 
 app.add_middleware(
