@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app import models
 from app.database import engine
@@ -10,20 +11,20 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="StuMedica API", version="0.6")
 
 origins = [
-    "http://localhost:8081",
-    "http://localhost:8082",
-    "http://localhost:3000",
     "http://stumedica.pl",
     "https://stumedica.pl",
     "http://www.stumedica.pl",
     "https://www.stumedica.pl",
-
 ]
+
+app.add_middleware(
+    ProxyHeadersMiddleware,
+    trusted_hosts=["*"]
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
