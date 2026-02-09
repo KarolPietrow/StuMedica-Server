@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from app.database import get_db
 from app.dependencies import get_current_user
 from app import models
-# from app.rag_engine import rag_system
+from app.rag_engine import rag_system
 
 load_dotenv()
 
