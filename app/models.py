@@ -13,6 +13,7 @@ class User(Base):
     # age = Column(Integer) # Opcjonalnie, jeśli używasz
     account_type = Column(String, nullable=False)  # 'patient' lub 'doctor'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    ai_allowed = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
     medications = relationship("Medication", back_populates="owner")

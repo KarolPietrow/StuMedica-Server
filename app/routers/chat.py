@@ -77,6 +77,9 @@ def ask_assistant(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    if not current_user.ai_allowed:
+        return {"response": "Przepraszamy, funkcjonalność AI nie jest jeszcze dostępna dla tego konta. Prosimy o kontakt z administratorem."}
+
     def secure_tool(timeout_seconds=3):
         def decorator(func):
             @wraps(func)
