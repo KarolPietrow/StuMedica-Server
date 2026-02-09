@@ -7,14 +7,17 @@ from app.database import engine
 from app.routers import auth, base, medications, appointments, chat
 
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI(title="StuMedica API", version="0.5")
+app = FastAPI(title="StuMedica API", version="0.6")
 
 origins = [
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:3000",
+    "http://stumedica.pl",
     "https://stumedica.pl",
+    "http://www.stumedica.pl",
     "https://www.stumedica.pl",
+
 ]
 
 app.add_middleware(

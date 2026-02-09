@@ -9,10 +9,10 @@ db = SessionLocal()
 
 # USTAWIENIA DATY
 YEAR = 2026
-START_MONTH = 1
-START_DAY = 20
-END_MONTH = 2
-END_DAY = 20
+START_MONTH = 2
+START_DAY = 1
+END_MONTH = 3
+END_DAY = 31
 
 # 1. Dodaj lekarzy
 doctors_data = [
